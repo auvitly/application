@@ -96,7 +96,15 @@ func (app *Application) Init(ctx context.Context) (err error) {
 		return ErrWrongState
 	}
 
-	initCtx, initCtxCancel := context.WithTimeout(context.Background(), app.config.InitialisationTimeout)
+	var (
+		initCtx       context.Context
+		initCtxCancel context.CancelFunc
+	)
+	if app.config.InitialisationTimeout != 0 {
+		initCtx, initCtxCancel = context.WithTimeout(context.Background(), app.config.InitialisationTimeout)
+	} else {
+		initCtx, initCtxCancel = context.WithCancel(context.Background())
+	}
 	defer initCtxCancel()
 
 	go app.init(ctx)
@@ -190,7 +198,7 @@ func (app *Application) run() {
 // recover - panic detection and processing system
 func (app *Application) recover() {
 	if err := recover(); err != nil {
-		if app.config.DebugStack {
+		if app.config.EnableDebugStack {
 			app.log.Println(err, string(debug.Stack()))
 		} else {
 			app.log.Println(err)
@@ -203,7 +211,15 @@ func (app *Application) recover() {
 func (app *Application) Shutdown() (err error) {
 	app.state = StateShutdown
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), app.config.TerminationTimeout)
+	var (
+		shutdownCtx    context.Context
+		shutdownCancel context.CancelFunc
+	)
+	if app.config.InitialisationTimeout != 0 {
+		shutdownCtx, shutdownCancel = context.WithTimeout(context.Background(), app.config.TerminationTimeout)
+	} else {
+		shutdownCtx, shutdownCancel = context.WithCancel(context.Background())
+	}
 	defer shutdownCancel()
 
 	go app.shutdown()
