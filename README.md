@@ -14,7 +14,7 @@ Package allows you to perform a phased launch of the application.
 
 1. Load the package into the project
 ``` 
-go get github.com/auvitly/applicatio
+go get github.com/auvitly/application
 ```
 
 2. Import the package at the place of use
