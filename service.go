@@ -10,4 +10,4 @@ type Service interface {
 	io.Closer
 }
 
-type Constructor func(ctx context.Context) (Service, error)
+type Constructor func(ctx context.Context, app *Application) (Service, error)

@@ -39,7 +39,14 @@ type Application struct {
 	exitCh chan os.Signal
 }
 
-func New(config *Config) *Application {
+var defaultTerminateSyscall = []os.Signal{
+	syscall.SIGHUP,
+	syscall.SIGINT,
+	syscall.SIGTERM,
+	syscall.SIGQUIT,
+}
+
+func New(config *Config, signals ...os.Signal) *Application {
 	app := &Application{
 		config:     config,
 		log:        log.Default(),
@@ -50,11 +57,11 @@ func New(config *Config) *Application {
 		exitCh:     make(chan os.Signal),
 	}
 
-	signal.Notify(app.exitCh,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
+	if len(signals) == 0 {
+		signal.Notify(app.exitCh, defaultTerminateSyscall...)
+	} else {
+		signal.Notify(app.exitCh, signals...)
+	}
 
 	return app
 }
@@ -144,7 +151,7 @@ func (app *Application) init(ctx context.Context) {
 	for i := range app.constructors {
 		var service Service
 		var err error
-		service, err = app.constructors[i](ctx)
+		service, err = app.constructors[i](ctx, app)
 		if err != nil {
 			app.initCh <- types.ResultError
 		}
