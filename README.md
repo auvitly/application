@@ -14,7 +14,7 @@ Package allows you to perform a phased launch of the application.
 
 1. Load the package into the project
 ``` 
-go get git.qvant.ru/go-libs/application
+go get github.com/go-libs/application
 ```
 
 2. Import the package at the place of use
