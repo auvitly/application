@@ -34,9 +34,6 @@ type Application struct {
 	runCh chan struct{}
 	// A channel that allows you to intercept the error of one service
 	errCh chan error
-
-	// The channel is created to negotiate application termination via system calls
-	exitCh chan os.Signal
 }
 
 var defaultTerminateSyscall = []os.Signal{
@@ -46,6 +43,10 @@ var defaultTerminateSyscall = []os.Signal{
 	syscall.SIGQUIT,
 }
 
+// The channel is created to negotiate application termination via system calls
+var exitCh = make(chan os.Signal)
+
+// New - creating an application instance
 func New(config *Config) *Application {
 	app := &Application{
 		config:     config,
@@ -54,7 +55,6 @@ func New(config *Config) *Application {
 		shutdownCh: make(chan types.OperationResult),
 		runCh:      make(chan struct{}),
 		errCh:      make(chan error),
-		exitCh:     make(chan os.Signal),
 	}
 
 	return app
@@ -125,7 +125,7 @@ func (app *Application) Init(ctx context.Context, signals ...os.Signal) (err err
 				return ErrInitContextDeadline
 			case <-initCtx.Done():
 				return ErrInitTimeout
-			case <-app.exitCh:
+			case <-exitCh:
 				return ErrInitConstructorPanic
 			}
 		}
@@ -140,7 +140,7 @@ func (app *Application) Init(ctx context.Context, signals ...os.Signal) (err err
 }
 
 func (app *Application) init(ctx context.Context, signals ...os.Signal) {
-	defer app.recover()
+	defer Recover()
 
 	for i := range app.constructors {
 		var service Service
@@ -153,9 +153,9 @@ func (app *Application) init(ctx context.Context, signals ...os.Signal) {
 	}
 
 	if len(signals) == 0 {
-		signal.Notify(app.exitCh, defaultTerminateSyscall...)
+		signal.Notify(exitCh, defaultTerminateSyscall...)
 	} else {
-		signal.Notify(app.exitCh, signals...)
+		signal.Notify(exitCh, signals...)
 	}
 
 	app.initCh <- types.ResultSuccess
@@ -176,8 +176,13 @@ func (app *Application) Run(ctx context.Context) (err error) {
 
 	for {
 		select {
-		case signal := <-app.exitCh:
+		case signal := <-exitCh:
 			if signal == types.SIGPANIC {
+				if app.config.EnableDebugStack {
+					app.log.Println(err, string(debug.Stack()))
+				} else {
+					app.log.Println(err)
+				}
 				return ErrRunPanic
 			}
 			return nil
@@ -195,23 +200,11 @@ func (app *Application) run() {
 	// Start all services with error handling
 	for i := range app.services {
 		go func() {
-			defer app.recover()
+			defer Recover()
 			if err := app.services[i].Serve(); err != nil {
 				app.errCh <- err
 			}
 		}()
-	}
-}
-
-// recover - panic detection and processing system
-func (app *Application) recover() {
-	if err := recover(); err != nil {
-		if app.config.EnableDebugStack {
-			app.log.Println(err, string(debug.Stack()))
-		} else {
-			app.log.Println(err)
-		}
-		app.exitCh <- types.SIGPANIC
 	}
 }
 
@@ -263,4 +256,11 @@ func (app *Application) shutdown() {
 		}
 	}
 	app.shutdownCh <- types.ResultSuccess
+}
+
+// Recover - global method for catching application panics
+func Recover() {
+	if err := recover(); err != nil {
+		exitCh <- types.SIGPANIC
+	}
 }
