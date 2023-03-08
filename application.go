@@ -41,6 +41,11 @@ var defaultTerminateSyscall = []os.Signal{
 	syscall.SIGQUIT,
 }
 
+type PanicSignal struct{}
+
+// The channel was created to send a signal about the occurrence of a panic to subsequent methods for processing
+var panicCh = make(chan PanicSignal)
+
 // The channel is created to negotiate application termination via system calls
 var exitCh = make(chan os.Signal, 10)
 
@@ -287,5 +292,12 @@ func Recover() {
 	if panicMsg := recover(); panicMsg != nil {
 		exitCh <- types.SIGPANIC
 		errCh <- errors.New(panicMsg.(string))
+		panicCh <- PanicSignal{}
 	}
+}
+
+// Panic - the method returns a channel for reading to process the panic state in the methods
+// for collecting metrics, checking health, etc.
+func Panic() <-chan PanicSignal {
+	return panicCh
 }
