@@ -25,7 +25,7 @@ type Application struct {
 	// application launch configuration
 	config *Config
 	// log for application
-	log *log.Logger
+	log Logger
 
 	// The channel defining initialization status
 	initCh chan types.OperationResult
@@ -59,6 +59,13 @@ func New(config *Config) *Application {
 	}
 
 	return app
+}
+
+// SetLogger sets the logger for package output
+func (app *Application) SetLogger(logger Logger) {
+	if logger != nil {
+		app.log = logger
+	}
 }
 
 // RegistrationService - registering Constructor with internally initialized dependencies
