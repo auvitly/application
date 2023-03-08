@@ -46,7 +46,7 @@ var defaultTerminateSyscall = []os.Signal{
 	syscall.SIGQUIT,
 }
 
-func New(config *Config, signals ...os.Signal) *Application {
+func New(config *Config) *Application {
 	app := &Application{
 		config:     config,
 		log:        log.Default(),
@@ -55,12 +55,6 @@ func New(config *Config, signals ...os.Signal) *Application {
 		runCh:      make(chan struct{}),
 		errCh:      make(chan error),
 		exitCh:     make(chan os.Signal),
-	}
-
-	if len(signals) == 0 {
-		signal.Notify(app.exitCh, defaultTerminateSyscall...)
-	} else {
-		signal.Notify(app.exitCh, signals...)
 	}
 
 	return app
@@ -98,7 +92,7 @@ func (app *Application) RegistrationResource(resources ...io.Closer) (err error)
 }
 
 // Init - performs initialization of registered constructors
-func (app *Application) Init(ctx context.Context) (err error) {
+func (app *Application) Init(ctx context.Context, signals ...os.Signal) (err error) {
 	if app.state != StateInit {
 		return ErrWrongState
 	}
@@ -114,7 +108,7 @@ func (app *Application) Init(ctx context.Context) (err error) {
 	}
 	defer initCtxCancel()
 
-	go app.init(ctx)
+	go app.init(ctx, signals...)
 
 	err = func() error {
 		for {
@@ -145,7 +139,7 @@ func (app *Application) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-func (app *Application) init(ctx context.Context) {
+func (app *Application) init(ctx context.Context, signals ...os.Signal) {
 	defer app.recover()
 
 	for i := range app.constructors {
@@ -157,6 +151,13 @@ func (app *Application) init(ctx context.Context) {
 		}
 		app.services = append(app.services, service)
 	}
+
+	if len(signals) == 0 {
+		signal.Notify(app.exitCh, defaultTerminateSyscall...)
+	} else {
+		signal.Notify(app.exitCh, signals...)
+	}
+
 	app.initCh <- types.ResultSuccess
 }
 

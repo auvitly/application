@@ -72,19 +72,6 @@ var app = application.New(config)
 )
 ````
 
-Функция `New(config *Config, signals ...os.Signal)` в качестве второго аргумента опционально принимает перечисление системных 
-вызовов, используя их как сигналы для завершения. Если сигналы не были переданы, то в качестве сигналов будет
-использован стандартный набор системных вызовов:
-
-````go
-var defaultTerminateSyscall = []os.Signal{
-	syscall.SIGHUP,
-	syscall.SIGINT,
-	syscall.SIGTERM,
-	syscall.SIGQUIT,
-}
-````
-
 <a name="service"></a>
 #### 2.2 Service
 
@@ -132,6 +119,19 @@ func runStorageService(ctx context.context, app *application.Application) (appli
 	}
 	
 	return srv, nil
+}
+````
+
+Функция `Init(config *Config, signals ...os.Signal)` в качестве второго аргумента опционально принимает перечисление системных
+вызовов, используя их как сигналы для завершения. Если сигналы не были переданы, то в качестве сигналов будет
+использован стандартный набор системных вызовов:
+
+````go
+var defaultTerminateSyscall = []os.Signal{
+	syscall.SIGHUP,
+	syscall.SIGINT,
+	syscall.SIGTERM,
+	syscall.SIGQUIT,
 }
 ````
 
