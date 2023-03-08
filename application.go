@@ -43,7 +43,7 @@ var defaultTerminateSyscall = []os.Signal{
 }
 
 // The channel is created to negotiate application termination via system calls
-var exitCh = make(chan os.Signal)
+var exitCh = make(chan os.Signal, 10)
 
 // A channel that allows you to intercept the error of one service
 var errCh = make(chan error)
