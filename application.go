@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/Auvitly/application/internal/types"
 	"io"
-	"log"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -25,7 +24,7 @@ type Application struct {
 	// application launch configuration
 	config *Config
 	// log for application
-	log Logger
+	logger Logger
 
 	// The channel defining initialization status
 	initCh chan types.OperationResult
@@ -52,7 +51,7 @@ var errCh = make(chan error)
 func New(config *Config) *Application {
 	app := &Application{
 		config:     config,
-		log:        log.Default(),
+		logger:     &emptyLogger{},
 		initCh:     make(chan types.OperationResult),
 		shutdownCh: make(chan types.OperationResult),
 		runCh:      make(chan struct{}),
@@ -64,7 +63,15 @@ func New(config *Config) *Application {
 // SetLogger sets the logger for package output
 func (app *Application) SetLogger(logger Logger) {
 	if logger != nil {
-		app.log = logger
+		app.logger = logger
+	}
+}
+
+func (app *Application) log() Logger {
+	if app.logger == nil {
+		return &emptyLogger{}
+	} else {
+		return app.logger
 	}
 }
 
@@ -74,6 +81,7 @@ func (app *Application) RegistrationService(constructors ...Constructor) (err er
 		return ErrWrongState
 	}
 	app.constructors = append(app.constructors, constructors...)
+	app.log().Printf("Services registered", len(constructors))
 	return nil
 }
 
@@ -95,6 +103,7 @@ func (app *Application) RegistrationResource(resources ...io.Closer) (err error)
 			app.resources = append(app.resources, resources[i])
 		}
 	}
+	app.log().Printf("Resources registered", len(resources))
 
 	return nil
 }
@@ -144,6 +153,8 @@ func (app *Application) Init(ctx context.Context, signals ...os.Signal) (err err
 	close(app.initCh)
 
 	app.state = StateReady
+	app.log().Print("Application initialized")
+
 	return nil
 }
 
@@ -187,17 +198,18 @@ func (app *Application) Run(ctx context.Context) (err error) {
 		case signal := <-exitCh:
 			if signal == types.SIGPANIC {
 				err = <-errCh
+				app.log().Printf("A panic was detected in the service with the message: %v", err)
 				if app.config.EnableDebugStack {
-					app.log.Println(err, string(debug.Stack()))
-				} else {
-					app.log.Println(err)
+					app.log().Printf("Debug stack info: %s", string(debug.Stack()))
 				}
 				return ErrRunPanic
 			}
 			return nil
 		case <-ctx.Done():
+			app.log().Printf("Service stopped due to context deadline")
 			return ErrRunContextDeadline
 		case err = <-errCh:
+			app.log().Printf("Service stopped due to context deadline")
 			return err
 		default:
 		}
@@ -238,8 +250,10 @@ func (app *Application) Shutdown() (err error) {
 		for {
 			select {
 			case <-app.shutdownCh:
+				app.log().Printf("Safe termination completed successfully")
 				return nil
 			case <-shutdownCtx.Done():
+				app.log().Printf("Graceful shutdown of the application was aborted due termination timeout")
 				return ErrTerminateTimeout
 			}
 		}
@@ -253,14 +267,14 @@ func (app *Application) shutdown() {
 	for i := range app.services {
 		err := app.services[i].Close()
 		if err != nil {
-			app.log.Println(err)
+			app.log().Printf("Service shutdown error: %v", err)
 			continue
 		}
 	}
 	for i := range app.resources {
 		err := app.resources[i].Close()
 		if err != nil {
-			app.log.Println(err)
+			app.log().Printf("Resource shutdown error: %v", err)
 			continue
 		}
 	}
