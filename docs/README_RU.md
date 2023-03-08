@@ -176,6 +176,7 @@ func main() {
 func runStorageService(ctx context.context, app *application.Application) (application.Service, error) {
 	...
 }
+````
 
 Функция `Init(config *Config, signals ...os.Signal)` в качестве второго аргумента опционально принимает перечисление системных
 вызовов, используя их как сигналы для завершения. Если сигналы не были переданы, то в качестве сигналов будет
@@ -188,8 +189,6 @@ var defaultTerminateSyscall = []os.Signal{
 	syscall.SIGTERM,
 	syscall.SIGQUIT,
 }
-````
-
 ````
 
 <a name="state"></a>
