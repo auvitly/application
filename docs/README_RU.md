@@ -122,19 +122,6 @@ func runStorageService(ctx context.context, app *application.Application) (appli
 }
 ````
 
-Функция `Init(config *Config, signals ...os.Signal)` в качестве второго аргумента опционально принимает перечисление системных
-вызовов, используя их как сигналы для завершения. Если сигналы не были переданы, то в качестве сигналов будет
-использован стандартный набор системных вызовов:
-
-````go
-var defaultTerminateSyscall = []os.Signal{
-	syscall.SIGHUP,
-	syscall.SIGINT,
-	syscall.SIGTERM,
-	syscall.SIGQUIT,
-}
-````
-
 Как видно из фрагмента выше: база данных зарегистрирована как ресурс, который будет обработан в функции `Shutdown`. 
 
 >**Немного о graceful shutdown**
@@ -189,6 +176,19 @@ func main() {
 func runStorageService(ctx context.context, app *application.Application) (application.Service, error) {
 	...
 }
+
+Функция `Init(config *Config, signals ...os.Signal)` в качестве второго аргумента опционально принимает перечисление системных
+вызовов, используя их как сигналы для завершения. Если сигналы не были переданы, то в качестве сигналов будет
+использован стандартный набор системных вызовов:
+
+````go
+var defaultTerminateSyscall = []os.Signal{
+	syscall.SIGHUP,
+	syscall.SIGINT,
+	syscall.SIGTERM,
+	syscall.SIGQUIT,
+}
+````
 
 ````
 
