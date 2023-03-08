@@ -32,8 +32,6 @@ type Application struct {
 	shutdownCh chan types.OperationResult
 	// The channel that determines whether all services are running and the application has started
 	runCh chan struct{}
-	// A channel that allows you to intercept the error of one service
-	errCh chan error
 }
 
 var defaultTerminateSyscall = []os.Signal{
@@ -46,6 +44,9 @@ var defaultTerminateSyscall = []os.Signal{
 // The channel is created to negotiate application termination via system calls
 var exitCh = make(chan os.Signal)
 
+// A channel that allows you to intercept the error of one service
+var errCh = make(chan error)
+
 // New - creating an application instance
 func New(config *Config) *Application {
 	app := &Application{
@@ -54,7 +55,6 @@ func New(config *Config) *Application {
 		initCh:     make(chan types.OperationResult),
 		shutdownCh: make(chan types.OperationResult),
 		runCh:      make(chan struct{}),
-		errCh:      make(chan error),
 	}
 
 	return app
@@ -178,6 +178,7 @@ func (app *Application) Run(ctx context.Context) (err error) {
 		select {
 		case signal := <-exitCh:
 			if signal == types.SIGPANIC {
+				err = <-errCh
 				if app.config.EnableDebugStack {
 					app.log.Println(err, string(debug.Stack()))
 				} else {
@@ -188,7 +189,7 @@ func (app *Application) Run(ctx context.Context) (err error) {
 			return nil
 		case <-ctx.Done():
 			return ErrRunContextDeadline
-		case err = <-app.errCh:
+		case err = <-errCh:
 			return err
 		default:
 		}
@@ -202,7 +203,7 @@ func (app *Application) run() {
 		go func() {
 			defer Recover()
 			if err := app.services[i].Serve(); err != nil {
-				app.errCh <- err
+				errCh <- err
 			}
 		}()
 	}
@@ -262,5 +263,6 @@ func (app *Application) shutdown() {
 func Recover() {
 	if err := recover(); err != nil {
 		exitCh <- types.SIGPANIC
+		errCh <- err.(error)
 	}
 }
