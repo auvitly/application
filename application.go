@@ -192,6 +192,7 @@ func (app *Application) Run(ctx context.Context) (err error) {
 	}()
 
 	app.state = StateRunning
+	app.log().Print("Application started")
 
 	for {
 		select {
