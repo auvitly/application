@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"github.com/Auvitly/application/internal/types"
 	"io"
 	"log"
@@ -261,8 +262,8 @@ func (app *Application) shutdown() {
 
 // Recover - global method for catching application panics
 func Recover() {
-	if err := recover(); err != nil {
+	if panicMsg := recover(); panicMsg != nil {
 		exitCh <- types.SIGPANIC
-		errCh <- err.(error)
+		errCh <- errors.New(panicMsg.(string))
 	}
 }
