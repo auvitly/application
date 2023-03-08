@@ -188,7 +188,7 @@ func (app *Application) Run(ctx context.Context) (err error) {
 
 	go app.run()
 	defer func() {
-		go app.Shutdown()
+		app.Shutdown()
 	}()
 
 	app.state = StateRunning
