@@ -86,7 +86,7 @@ func (app *Application) RegistrationService(constructors ...Constructor) (err er
 		return ErrWrongState
 	}
 	app.constructors = append(app.constructors, constructors...)
-	app.log().Printf("Services registered", len(constructors))
+	app.log().Printf("Services registered %d", len(constructors))
 	return nil
 }
 
@@ -108,7 +108,7 @@ func (app *Application) RegistrationResource(resources ...io.Closer) (err error)
 			app.resources = append(app.resources, resources[i])
 		}
 	}
-	app.log().Printf("Resources registered", len(resources))
+	app.log().Printf("Resources registered %d", len(resources))
 
 	return nil
 }
