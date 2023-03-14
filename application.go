@@ -11,26 +11,26 @@ import (
 	"syscall"
 )
 
-// Application - implements the start of services and their completion
+// Application - implements the start of services and their completion.
 type Application struct {
-	// contains a list of registered constructors
+	// contains a list of registered constructors.
 	constructors []Constructor
-	// contains a list of started services
+	// contains a list of started services.
 	services []Service
-	// contains a list of started resources
+	// contains a list of started resources.
 	resources []io.Closer
-	// current application state
-	state State
-	// application launch configuration
+	// application launch configuration.
 	config *Config
-	// log for application
+	// log for application.
 	logger Logger
 
-	// The channel defining initialization status
+	// current application state.
+	state state
+	// The channel defining initialization status.
 	initCh chan types.OperationResult
-	// The channel that determines the application's exit status
+	// The channel that determines the application's exit status.
 	shutdownCh chan types.OperationResult
-	// The channel that determines whether all services are running and the application has started
+	// The channel that determines whether all services are running and the application has started.
 	runCh chan struct{}
 }
 
@@ -43,16 +43,16 @@ var defaultTerminateSyscall = []os.Signal{
 
 type PanicSignal struct{}
 
-// The channel was created to send a signal about the occurrence of a panic to subsequent methods for processing
+// The channel was created to send a signal about the occurrence of a panic to subsequent methods for processing.
 var panicCh = make(chan PanicSignal)
 
-// The channel is created to negotiate application termination via system calls
+// The channel is created to negotiate application termination via system calls.
 var exitCh = make(chan os.Signal, 10)
 
-// A channel that allows you to intercept the error of one service
+// A channel that allows you to intercept the error of one service.
 var errCh = make(chan error)
 
-// New - creating an application instance
+// New - creating an application instance.
 func New(config *Config) *Application {
 	app := &Application{
 		config:     config,
@@ -65,7 +65,7 @@ func New(config *Config) *Application {
 	return app
 }
 
-// SetLogger sets the logger for package output
+// SetLogger sets the logger for package output.
 func (app *Application) SetLogger(logger Logger) {
 	if logger != nil {
 		app.logger = logger
@@ -80,9 +80,9 @@ func (app *Application) log() Logger {
 	}
 }
 
-// RegistrationService - registering Constructor with internally initialized dependencies
+// RegistrationService - registering Constructor with internally initialized dependencies.
 func (app *Application) RegistrationService(constructors ...Constructor) (err error) {
-	if app.state != StateInit {
+	if app.state != stateInit {
 		return ErrWrongState
 	}
 	app.constructors = append(app.constructors, constructors...)
@@ -90,9 +90,9 @@ func (app *Application) RegistrationService(constructors ...Constructor) (err er
 	return nil
 }
 
-// RegistrationResource - registering resource Destructors
+// RegistrationResource - registering resource Destructors.
 func (app *Application) RegistrationResource(resources ...io.Closer) (err error) {
-	if app.state != StateInit {
+	if app.state != stateInit {
 		return ErrWrongState
 	}
 
@@ -113,9 +113,9 @@ func (app *Application) RegistrationResource(resources ...io.Closer) (err error)
 	return nil
 }
 
-// Init - performs initialization of registered constructors
+// Init - performs initialization of registered constructors.
 func (app *Application) Init(ctx context.Context, signals ...os.Signal) (err error) {
-	if app.state != StateInit {
+	if app.state != stateInit {
 		return ErrWrongState
 	}
 
@@ -157,7 +157,7 @@ func (app *Application) Init(ctx context.Context, signals ...os.Signal) (err err
 	}
 	close(app.initCh)
 
-	app.state = StateReady
+	app.state = stateReady
 	app.log().Print("Application initialized")
 
 	return nil
@@ -185,9 +185,9 @@ func (app *Application) init(ctx context.Context, signals ...os.Signal) {
 	app.initCh <- types.ResultSuccess
 }
 
-// Run - launching the ready application
+// Run - launching the ready application.
 func (app *Application) Run(ctx context.Context) (err error) {
-	if app.state != StateReady {
+	if app.state != stateReady {
 		return ErrWrongState
 	}
 
@@ -196,7 +196,7 @@ func (app *Application) Run(ctx context.Context) (err error) {
 		app.Shutdown()
 	}()
 
-	app.state = StateRunning
+	app.state = stateRunning
 	app.log().Print("Application started")
 
 	for {
@@ -235,9 +235,9 @@ func (app *Application) run() {
 	}
 }
 
-// Shutdown - shutdown the application
+// Shutdown - shutdown the application.
 func (app *Application) Shutdown() (err error) {
-	app.state = StateShutdown
+	app.state = stateShutdown
 
 	var (
 		shutdownCtx    context.Context
@@ -265,7 +265,7 @@ func (app *Application) Shutdown() (err error) {
 		}
 	}()
 
-	app.state = StateOff
+	app.state = stateOff
 	return err
 }
 
@@ -287,7 +287,7 @@ func (app *Application) shutdown() {
 	app.shutdownCh <- types.ResultSuccess
 }
 
-// Recover - global method for catching application panics
+// Recover - global method for catching application panics.
 func Recover() {
 	if panicMsg := recover(); panicMsg != nil {
 		exitCh <- types.SIGPANIC

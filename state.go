@@ -1,26 +1,26 @@
 package application
 
-type State int
+type state int
 
 const (
-	StateInit State = iota
-	StateReady
-	StateRunning
-	StateShutdown
-	StateOff
+	stateInit state = iota
+	stateReady
+	stateRunning
+	stateShutdown
+	stateOff
 )
 
-func (s State) String() string {
+func (s state) String() string {
 	switch s {
-	case StateInit:
+	case stateInit:
 		return "state_init"
-	case StateReady:
+	case stateReady:
 		return "state_ready"
-	case StateRunning:
+	case stateRunning:
 		return "state_running"
-	case StateShutdown:
+	case stateShutdown:
 		return "state_shutdown"
-	case StateOff:
+	case stateOff:
 		return "state_off"
 	default:
 		return "state_error"
